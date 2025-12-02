@@ -30,36 +30,40 @@ get_distances <- function(mat1, mat2){
 #' The function k_means_visual takes a 2D data frame
 #' and the number of clusters k. If k is not provided
 #' it generates a random value between 1 and 10 for k.
-#' While executing, it prints multiple plots to show
-#' how the algorithm converges. Note, that edge colors
+#' While executing, it prints multiple plots, if print_plot = TRUE,
+#' to show how the algorithm converges. Note, that edge colors
 #' show new cluster classifications, while fill colors
 #' indicate previous clusters. It returns a list of
 #' clusters (length = n) and their coordinates
-#' in the 2D space
+#' in the 2D space (k x 2 matrix)
 
-k_means_visual <- function(k = NULL, data){
+k_means_visual <- function(k, data, print_plot = TRUE){
   
   # ------------------------ Check hyper-variables first ------------------------
   
   # Check if k is provided, otherwise generate a random number
   # between 1 and 10
-  k <- ifelse(is.null(k),
+  k <- ifelse(missing(k),
               round(runif(1,1,10),0),
               k)
   
   # Check if it's a 2D data
-  if (is.data.frame(data)){
-    df <- data
-  } else{
-    stop("Please provide a data set")
+  if (missing(data) || !is.data.frame(data)){
+    stop(
+      paste("Please provide a data set.",
+             "Note that it should be a 2-dimensional data frame.",
+             sep = " ")
+      )
   }
   if (ncol(data) != 2){
-    stop("Please make sure that the data frame is in a 2-dimensional space")
+    stop(
+      "Please make sure that the data frame is in a 2-dimensional space."
+      )
   }
   # Make sure column names are X and Y
-  colnames(df) <- c("x","y")
-  # Create a matrix from df - we'll use it later
-  df_mat <- as.matrix(df)
+  colnames(data) <- c("x","y")
+  # Create a matrix from data - we'll use it later
+  df_mat <- as.matrix(data)
   
   # Create a palette for visualization
   my_palette <- hue_pal()(k) 
@@ -68,8 +72,8 @@ k_means_visual <- function(k = NULL, data){
   
   # Set initial random values for k centroids
   # within the range of X and Y
-  x_range <- range(df$x)
-  y_range <- range(df$y)
+  x_range <- range(data$x)
+  y_range <- range(data$y)
   k_mat <- matrix(
     c(
       runif(k, x_range[1], x_range[2]),
@@ -95,30 +99,42 @@ k_means_visual <- function(k = NULL, data){
     clusters <- apply(dist_mat, 1, which.min)
     
     # Visualize
-    p1 <- ggplot()+
-      # Data points
-      geom_point(data = as.data.frame(df_mat), aes(x = x, y = y,
-                                                   fill = factor(clusters, levels = 1:k),
-                                                   color = factor(clusters, levels = 1:k)),
-                 size = 2, shape = 21, stroke = 2)+
-      # Centroids
-      geom_point(data = as.data.frame(k_mat), aes(x = x, y = y,
-                                                  fill = factor(1:nrow(k_mat), levels = 1:k),
-                                                  color = factor(1:nrow(k_mat), levels = 1:k)),
-                 size = 8, shape = 21)+
-      scale_color_manual(values = my_palette, 
-                         breaks = 1:k,
-                         labels = 1:k)+
-      scale_fill_manual(values = my_palette, 
-                        breaks = 1:k,
-                        labels = 1:k)+
-      scale_x_continuous(limits = x_range)+
-      scale_y_continuous(limits = y_range)+
-      labs(x = "X", y = "Y", color = "Cluster", fill = "Cluster")+
-      theme_minimal()
-    
-    print(p1)
-    Sys.sleep(1) # wait to see the differences between plots
+    if (print_plot){
+      p1 <- ggplot()+
+        # Data points
+        geom_point(
+          data = as.data.frame(df_mat), 
+          aes(x = x, y = y,
+              fill = factor(clusters, levels = 1:k),
+              color = factor(clusters, levels = 1:k)),
+          size = 2, shape = 21, stroke = 2
+          )+
+        # Centroids
+        geom_point(
+          data = as.data.frame(k_mat), 
+          aes(x = x, y = y,
+              fill = factor(1:nrow(k_mat), levels = 1:k),
+              color = factor(1:nrow(k_mat), levels = 1:k)),
+          size = 8, shape = 21
+          )+
+        # Make sure colors are the same for
+        # fill and edge colors
+        scale_color_manual(values = my_palette, 
+                           breaks = 1:k,
+                           labels = 1:k)+
+        scale_fill_manual(values = my_palette, 
+                          breaks = 1:k,
+                          labels = 1:k)+
+        scale_x_continuous(limits = x_range)+
+        scale_y_continuous(limits = y_range)+
+        labs(x = "X", y = "Y", 
+             color = "Cluster", 
+             fill = "Cluster")+
+        theme_minimal()
+      
+      print(p1)
+      Sys.sleep(1) # wait to see the differences between plots
+    }
     
     # ------------------------ Update locations ------------------------
     
@@ -162,30 +178,40 @@ k_means_visual <- function(k = NULL, data){
       # New visualization with updated clusters
       # Fill color - old classifications
       # Edge color - new classifications
-      p2 <- ggplot()+
-        # Data points
-        geom_point(data = as.data.frame(df_mat), aes(x = x, y = y,
-                                                     fill = factor(clusters, levels = 1:k),
-                                                     color = factor(clusters_new, levels = 1:k)),
-                   size = 2, shape = 21, stroke = 2)+
-        # Centroids
-        geom_point(data = as.data.frame(k_mat_new), aes(x = x, y = y,
-                                                        color = factor(1:nrow(k_mat_new), levels = 1:k),
-                                                        fill = factor(1:nrow(k_mat_new), levels = 1:k)),
-                   size = 8, shape = 21)+
-        scale_color_manual(values = my_palette,
-                           breaks = 1:k,
-                           labels = 1:k)+
-        scale_fill_manual(values = my_palette,
-                          breaks = 1:k,
-                          labels = 1:k)+
-        scale_x_continuous(limits = x_range)+
-        scale_y_continuous(limits = y_range)+
-        labs(x = "X", y = "Y", color = "Cluster", fill = "Cluster")+
-        theme_minimal()
-      
-      print(p2)
-      Sys.sleep(1)
+      if (print_plot) {
+        p2 <- ggplot()+
+          # Data points
+          geom_point(
+            data = as.data.frame(df_mat), 
+            aes(x = x, y = y,
+                fill = factor(clusters, levels = 1:k),
+                color = factor(clusters_new, levels = 1:k)),
+            size = 2, shape = 21, stroke = 2
+            )+
+          # Centroids
+          geom_point(
+            data = as.data.frame(k_mat_new), 
+            aes(x = x, y = y,
+                color = factor(1:nrow(k_mat_new), levels = 1:k),
+                fill = factor(1:nrow(k_mat_new), levels = 1:k)),
+            size = 8, shape = 21
+            )+
+          scale_color_manual(values = my_palette,
+                             breaks = 1:k,
+                             labels = 1:k)+
+          scale_fill_manual(values = my_palette,
+                            breaks = 1:k,
+                            labels = 1:k)+
+          scale_x_continuous(limits = x_range)+
+          scale_y_continuous(limits = y_range)+
+          labs(x = "X", y = "Y", 
+               color = "Cluster", 
+               fill = "Cluster")+
+          theme_minimal()
+        
+        print(p2)
+        Sys.sleep(1)
+      }
     }
     
     # Update for next iteration
@@ -206,21 +232,5 @@ k_means_visual <- function(k = NULL, data){
   return(out)
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-k_means_visual(k=10,data = df)
+k_means_visual(k=1,data = df,print_plot = TRUE)
 

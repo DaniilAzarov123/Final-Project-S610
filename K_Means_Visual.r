@@ -52,8 +52,8 @@ get_distances <- function(data_mat, centroid_mat){
 #' it is reinitialized with new random coordinates in the next iteration.
 #'
 #' The function returns a list containing:
-#'   * `clusters`: a vector of length `n` indicating each point's cluster label
-#'   * `cluster_locations`: a `k x 2` matrix with the coordinates 
+#'   `clusters`: a vector of length `n` indicating each point's cluster label
+#'   `cluster_locations`: a `k x 2` matrix with the coordinates 
 #'      of the final centroids
 
 k_means_visual <- function(k, data, print_plot = TRUE){

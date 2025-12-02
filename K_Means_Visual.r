@@ -3,17 +3,28 @@ library(ggplot2) # For visualization
 library(scales) # To extract palettes
 
 
-# Load data
+# Load data to test functions later
 data("iris")
 df <- iris[,c("Sepal.Length","Petal.Width")]
 
-# Pre-define a function 
-# to compute distances in a 2D space
-# Returns distances from each point to each centroid
-get_distances <- function(mat1, mat2){
+
+
+# ------------------------ Visualization function ------------------------
+
+
+
+
+# Predefined function to compute distances in 2D space.
+# Takes two matrices:
+#   data_mat      - matrix of observed data points
+#   centroid_mat  - matrix of centroid coordinates
+# Returns:
+#   A matrix of distances from each data point to each centroid.
+
+get_distances <- function(data_mat, centroid_mat){
   # Ensure both are matrices
-  mat1 <- as.matrix(mat1)
-  mat2 <- as.matrix(mat2)
+  mat1 <- as.matrix(data_mat)
+  mat2 <- as.matrix(centroid_mat)
   
   n <- nrow(mat1)
   k <- nrow(mat2)
@@ -27,27 +38,34 @@ get_distances <- function(mat1, mat2){
 }
 
 
-#' The function k_means_visual takes a 2D data frame
-#' and the number of clusters k. If k is not provided
-#' it generates a random value between 1 and 10 for k.
-#' While executing, it prints multiple plots, if print_plot = TRUE,
-#' to show how the algorithm converges. Note, that edge colors
-#' show new cluster classifications, while fill colors
-#' indicate previous clusters. It returns a list of
-#' clusters (length = n) and their coordinates
-#' in the 2D space (k x 2 matrix)
+#' The function `k_means_visual` performs k-means clustering on a 2D data frame.
+#' It requires a dataset with two numeric columns and a specified number of
+#' clusters `k`. If `k` is not provided, the function randomly selects an
+#' integer between 1 and 10.
+#'
+#' If `print_plot = TRUE`, the function displays a sequence of plots showing
+#' how the algorithm converges over iterations. Edge colors represent the new
+#' cluster assignments, while fill colors show the assignments from the
+#' previous iteration.
+#'
+#' If, during the convergence process, a centroid receives no assigned points,
+#' it is reinitialized with new random coordinates in the next iteration.
+#'
+#' The function returns a list containing:
+#'   * `clusters`: a vector of length `n` indicating each point's cluster label
+#'   * `cluster_locations`: a `k x 2` matrix with the coordinates 
+#'      of the final centroids
 
 k_means_visual <- function(k, data, print_plot = TRUE){
   
-  # ------------------------ Check hyper-variables first ------------------------
+  # ------------------------ Validate inputs ------------------------
   
-  # Check if k is provided, otherwise generate a random number
-  # between 1 and 10
+  # If k is missing, generate a random value between 1 and 10
   k <- ifelse(missing(k),
               round(runif(1,1,10),0),
               k)
   
-  # Check if it's a 2D data
+  # Check that data is a 2D data frame
   if (missing(data) || !is.data.frame(data)){
     stop(
       paste("Please provide a data set.",
@@ -60,18 +78,17 @@ k_means_visual <- function(k, data, print_plot = TRUE){
       "Please make sure that the data frame is in a 2-dimensional space."
       )
   }
-  # Make sure column names are X and Y
+  # Standardize column names
   colnames(data) <- c("x","y")
-  # Create a matrix from data - we'll use it later
+  # Convert to matrix for distance calculations
   df_mat <- as.matrix(data)
   
-  # Create a palette for visualization
+  # Color palette for plotting
   my_palette <- hue_pal()(k) 
   
-  # ------------------------ Initialize function ------------------------
+  # ------------------------ Initialization ------------------------
   
-  # Set initial random values for k centroids
-  # within the range of X and Y
+  # Random initial centroid positions within data range
   x_range <- range(data$x)
   y_range <- range(data$y)
   k_mat <- matrix(
@@ -83,22 +100,19 @@ k_means_visual <- function(k, data, print_plot = TRUE){
   )
   colnames(k_mat) <- c("x","y")
   
-  # ------------------------ Initialize the cycle ------------------------
+  # ------------------------ Iterative update loop ------------------------
   
-  # Hyper-variables
-  need_update <- TRUE # flag when to stop the cycle
-  eps <- 1e-6 # precision
+  need_update <- TRUE           # stop condition
+  eps <- 1e-6                   # convergence threshold
   
   while(need_update){
-    # Calculate distances
-    # n x k matrix - distances from each data point
-    # to each centroid
+    # Distances from each point to each centroid (n × k)
     dist_mat <- get_distances(df_mat, k_mat) 
     
-    # Define clusters based on distances
+    # Assign points to nearest centroid
     clusters <- apply(dist_mat, 1, which.min)
     
-    # Visualize
+    # Visualization of current step
     if (print_plot){
       p1 <- ggplot()+
         # Data points
@@ -136,26 +150,21 @@ k_means_visual <- function(k, data, print_plot = TRUE){
       Sys.sleep(1) # wait to see the differences between plots
     }
     
-    # ------------------------ Update locations ------------------------
+    # ------------------------ Update cenroids ------------------------
     
-    # Define new centroid positions
-    # Address a problem that sometimes centroids can
-    # fall out (be too far away from data points)
-    # and k can become larger than the
-    # number of actual centroids
     k_mat_new <- matrix(NA, nrow = k, ncol = 2)
     colnames(k_mat_new) <- c("x","y")
     
+    # Compute centroid means (coordinates)
     x_means <- tapply(df_mat[, "x"], clusters, mean)
     y_means <- tapply(df_mat[, "y"], clusters, mean)
     
-    # Fill in the centroids that exist
+    # Update centroids that have assigned points
     existing_clusters <- as.numeric(names(x_means))
     k_mat_new[existing_clusters, "x"] <- x_means
     k_mat_new[existing_clusters, "y"] <- y_means
     
-    # Handle empty clusters if they exist
-    # Simply assign random values within the range
+    # Reinitialize empty clusters with random coordinates
     empty_clusters <- which(is.na(k_mat_new[, 1]))
     if(length(empty_clusters) > 0){
       for(i in empty_clusters){
@@ -164,31 +173,25 @@ k_means_visual <- function(k, data, print_plot = TRUE){
       }
     }
     
-    # Check if a new iteration is needed BEFORE creating p2
+    # Check for convergence
     converged <- all(abs(k_mat - k_mat_new) < eps)
     
-    # Only create and show p2 if not converged yet
+    # Visualization of updated assignments (only if not converged)
     if(!converged){
-      # New distances 
-      dist_mat_new <- get_distances(df_mat, k_mat_new)
       
-      # Define new clusters
+      # Next clusters
+      dist_mat_new <- get_distances(df_mat, k_mat_new)
       clusters_new <- apply(dist_mat_new, 1, which.min)
       
-      # New visualization with updated clusters
-      # Fill color - old classifications
-      # Edge color - new classifications
       if (print_plot) {
         p2 <- ggplot()+
-          # Data points
           geom_point(
             data = as.data.frame(df_mat), 
             aes(x = x, y = y,
-                fill = factor(clusters, levels = 1:k),
-                color = factor(clusters_new, levels = 1:k)),
+                fill = factor(clusters, levels = 1:k),       # previous step
+                color = factor(clusters_new, levels = 1:k)), # updated step
             size = 2, shape = 21, stroke = 2
             )+
-          # Centroids
           geom_point(
             data = as.data.frame(k_mat_new), 
             aes(x = x, y = y,
@@ -214,16 +217,16 @@ k_means_visual <- function(k, data, print_plot = TRUE){
       }
     }
     
-    # Update for next iteration
+    # ------------------------ Prepare next iteration ------------------------
     if (converged){
       need_update <- FALSE
     } else {
-      k_mat <- k_mat_new # update centroid locations
+      k_mat <- k_mat_new
       need_update <- TRUE
     }
   }
   
-  # Return a list with clusters and their positions
+  # ------------------------ Output ------------------------
   out <- list(
     clusters = clusters,
     cluster_locations = k_mat
@@ -232,5 +235,101 @@ k_means_visual <- function(k, data, print_plot = TRUE){
   return(out)
 }
 
-k_means_visual(k=1,data = df,print_plot = TRUE)
+# Example
+k_means_visual(k=5,data = df,print_plot = TRUE)
+
+
+
+
+
+# ------------------------ Optimal k function ------------------------
+
+
+
+#' Computes the total within-cluster sum of squares for k = 1 to max_k
+#' on a given 2D dataset. For each k, the function runs k-means (via
+#' k_means_visual), extracts cluster assignments and centroid locations,
+#' and calculates the sum of squared distances within clusters.
+#'
+#' Returns:
+#'   A matrix with two columns:
+#'     k           — number of clusters
+#'     tot_sum_sq  — total within-cluster sum of squares
+#'
+#' Also prints a plot visualizing tot_sum_sq as a function of k.
+
+optimal_k <- function(max_k, data){
+  
+  # Store results for each k
+  within_total_sum <- numeric(length = max_k)
+  
+  # Loop over all possible k values
+  for (k in 1:max_k){
+    # Run k-means
+    centroids_list <- k_means_visual(k = k, data = data, print_plot = FALSE)
+    
+    # Distances from every point to every centroid
+    distances_to_all_centr <- get_distances(data_mat = as.matrix(data),
+                                            centroid_mat = 
+                                              centroids_list$cluster_locations)
+    # Indices linking rows to their assigned cluster
+    which_cluster <- cbind(1:nrow(distances_to_all_centr), 
+                           centroids_list$clusters)
+    # Distance from each point to its assigned centroid
+    distances_to_cluster <- distances_to_all_centr[which_cluster]
+    
+    # Sum of squared distances within each cluster
+    within_sum_sq_dist <- tapply(distances_to_cluster, 
+                                 centroids_list$clusters,
+                                 function(clust_dist){
+                                   sum(clust_dist^2)
+                                 })
+    # Total within-cluster sum of squares for this k
+    within_total_sum[k] <- sum(within_sum_sq_dist)
+  }
+  
+  # Output matrix of results
+  out <- matrix(
+    c(1:max_k,
+      within_total_sum), 
+    ncol = 2
+  )
+  colnames(out) <- c("k","tot_sum_sq")
+  
+  # Visualization
+  p1 <- ggplot(out,aes(k,tot_sum_sq))+
+    geom_point(size = 5)+
+    geom_line(linewidth = 1)+
+    scale_x_continuous(breaks = 1:max_k)+
+    labs(x = "Number of clusters, k",
+         y = "Total within-cluster sum of squares")+
+    theme_minimal()
+  
+  print(p1)
+  return(out)
+}
+
+# Example
+optimal_k(10,df)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

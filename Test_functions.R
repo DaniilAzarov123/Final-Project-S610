@@ -2,7 +2,9 @@
 #'  k_means_visual
 #'  optimal_k
 
-library(testthat)
+library(testthat) # For tests
+library(ggplot2) # For visualization (inside functions)
+library(scales) # To extract palettes (inside functions)
 
 
 # ------------------------ Test k_means_visual() ------------------------

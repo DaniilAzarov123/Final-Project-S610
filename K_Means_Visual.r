@@ -260,6 +260,32 @@ k_means_visual(k=5,data = df,print_plot = TRUE)
 
 optimal_k <- function(max_k, data){
   
+  # ------------------------ Validate inputs ------------------------
+  
+  # Check that data is a 2D data frame
+  if (missing(data) || !is.data.frame(data)){
+    stop(
+      paste("Please provide a data set.",
+            "Note that it should be a 2-dimensional data frame.",
+            sep = " ")
+    )
+  }
+  if (ncol(data) != 2){
+    stop(
+      "Please make sure that the data frame is in a 2-dimensional space."
+    )
+  }
+  
+  # Check max_k
+  if ( !is.numeric(max_k) || max_k %% 1 != 0 ){
+    stop("max_k should be a whole number")
+  }
+  if (max_k < 1){
+    stop("max_k should be 1 or larger")
+  }
+  
+  # ------------------------ Within-cluster sum of sq ------------------------
+  
   # Store results for each k
   within_total_sum <- numeric(length = max_k)
   
@@ -288,6 +314,8 @@ optimal_k <- function(max_k, data){
     within_total_sum[k] <- sum(within_sum_sq_dist)
   }
   
+  # ------------------------ Output ------------------------
+  
   # Output matrix of results
   out <- matrix(
     c(1:max_k,
@@ -311,25 +339,3 @@ optimal_k <- function(max_k, data){
 
 # Example
 optimal_k(10,df)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -236,7 +236,10 @@ k_means_visual <- function(k, data, print_plot = TRUE){
 }
 
 # Example
-k_means_visual(k=5,data = df,print_plot = TRUE)
+set.seed(1)
+k_means_visual(k=3,
+               data = df,
+               print_plot = TRUE)
 
 
 
@@ -338,4 +341,5 @@ optimal_k <- function(max_k, data){
 }
 
 # Example
+set.seed(1)
 optimal_k(10,df)

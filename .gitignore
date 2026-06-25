@@ -1,0 +1,6 @@
+# R session artifacts
+.RData
+.Rhistory
+
+# OS files
+.DS_Store
